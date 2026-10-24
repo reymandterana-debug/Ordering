@@ -1,0 +1,13 @@
+Item,Category,Price,Stock
+Chicken Meal,Meals,99.0,44
+Burger,Meals,75.0,39
+Rice Meal,Meals,85.0,34
+Spaghetti,Meals,80.0,24
+Fries,Snacks,45.0,29
+Sandwich,Snacks,55.0,24
+Iced Tea,Drinks,35.0,49
+Milk Tea,Drinks,65.0,30
+Coffee,Drinks,45.0,40
+Ice Cream,Desserts,40.0,25
+Cake,Desserts,55.0,20
+Donut,Desserts,30.0,20
