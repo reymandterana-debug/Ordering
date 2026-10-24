@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corner Cafe Ordering</title>
+<style>
+:root{--ink:#281f34;--mut:#70677d;--pu:#7c3aed;--dpu:#5b21b6;--lpu:#f5f0ff;--bg:#f6f3fa;--bd:#e2dbed;--card:#fff;--red:#c8303c;--grn:#168c50}
+@media(prefers-color-scheme:dark){:root{--ink:#efeaf7;--mut:#a79fb5;--lpu:#2a2140;--bg:#19141f;--bd:#3a3048;--card:#221b2c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Segoe UI",system-ui,sans-serif}
+header{background:#191423;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+header h1{margin:0;font-size:22px;letter-spacing:.3px}
+header span{color:#c9b8ee;font-size:13px}
+.bar{display:flex;gap:8px;flex-wrap:wrap}
+main{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;padding:16px;max-width:1200px;margin:auto}
+@media(max-width:820px){main{grid-template-columns:1fr}}
+section{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px}
+h2{margin:0 0 10px;font-size:17px}
+input,select,button{font:inherit;border-radius:8px;border:1px solid var(--bd);padding:8px 10px;background:var(--card);color:var(--ink)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--pu);outline-offset:1px}
+button{cursor:pointer}
+.pri{background:var(--pu);border-color:var(--pu);color:#fff;font-weight:600}
+.pri:hover{background:var(--dpu)}
+.ghost{background:transparent;color:#fff;border-color:#5b4a7a}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tools input{flex:1;min-width:140px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.item{border:1px solid var(--bd);border-radius:10px;padding:10px;background:var(--lpu);display:flex;flex-direction:column;gap:4px}
+.item b{font-size:15px}.item small{color:var(--mut)}
+.price{color:var(--dpu);font-weight:700;font-size:17px}
+@media(prefers-color-scheme:dark){.price{color:#c4a8ff}}
+.item.out{opacity:.5}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd)}
+.row .q{display:flex;align-items:center;gap:4px}
+.row .q button{padding:2px 9px}
+.line{display:flex;justify-content:space-between;padding:3px 0}
+.total{font-size:20px;font-weight:700;border-top:2px solid var(--bd);margin-top:6px;padding-top:8px}
+.field{margin:8px 0;display:flex;flex-direction:column;gap:3px}.field label{font-size:13px;color:var(--mut)}
+#msg{min-height:20px;font-size:13px;margin-top:8px}.err{color:var(--red)}.ok{color:var(--grn)}
+.empty{color:var(--mut);padding:14px 0;text-align:center}
+dialog{border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--ink);max-width:420px;width:92%}
+dialog::backdrop{background:#0008}
+pre{font:12.5px/1.35 Consolas,monospace;white-space:pre-wrap;margin:0 0 12px}
+.rl button{display:block;width:100%;text-align:left;margin-bottom:6px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Corner Cafe</h1><span>Ordering System</span></div>
+  <div class="bar">
+    <button class="ghost" id="bReport">Sales report</button>
+    <button class="ghost" id="bReceipts">Receipts</button>
+    <button class="ghost" id="bReset">Reset data</button>
+  </div>
+</header>
+<main>
+  <section>
+    <h2>Menu</h2>
+    <div class="tools">
+      <input id="search" type="search" placeholder="Search items" aria-label="Search items">
+      <select id="cat" aria-label="Category"></select>
+      <input id="qty" type="number" min="1" value="1" style="width:70px" aria-label="Quantity">
+    </div>
+    <div id="grid"></div>
+  </section>
+  <section>
+    <h2>Current order</h2>
+    <div id="cart"></div>
+    <div class="field"><label for="cust">Customer name</label><input id="cust" placeholder="Walk-in"></div>
+    <div class="field"><label for="otype">Order type</label><select id="otype"><option>Dine In</option><option>Takeout</option></select></div>
+    <div class="field"><label for="disc">Discount</label><select id="disc"><option>No Discount</option><option>Senior/PWD - 20%</option><option>Promo - 10% (₱500+ only)</option></select></div>
+    <div class="line"><span>Subtotal</span><span id="sub"></span></div>
+    <div class="line"><span>Discount</span><span id="dis"></span></div>
+    <div class="line total"><span>Total</span><span id="tot"></span></div>
+    <div class="tools" style="margin:12px 0 0"><button id="bClear">Clear order</button><button class="pri" id="bPay" style="flex:1">Pay and print receipt</button></div>
+    <div id="msg" role="status"></div>
+  </section>
+</main>
+<dialog id="dlg"><pre id="dtxt"></pre><div class="rl" id="dlist"></div><button class="pri" id="dclose">Close</button></dialog>
+<script>
+const DEF=[["Chicken Meal","Meals",99,44],["Burger","Meals",75,39],["Rice Meal","Meals",85,34],["Spaghetti","Meals",80,24],["Fries","Snacks",45,29],["Sandwich","Snacks",55,24],["Iced Tea","Drinks",35,49],["Milk Tea","Drinks",65,30],["Coffee","Drinks",45,40],["Ice Cream","Desserts",40,25],["Cake","Desserts",55,20],["Donut","Desserts",30,20]].map(([n,c,p,s])=>({n,c,p,s}));
+const $=id=>document.getElementById(id), peso=v=>"₱"+v.toFixed(2);
+let st={menu:JSON.parse(JSON.stringify(DEF)),orders:0,sales:0,receipts:[]},cart=[];
+try{const s=localStorage.getItem("cornercafe");if(s)st=JSON.parse(s)}catch(e){}
+const save=()=>{try{localStorage.setItem("cornercafe",JSON.stringify(st))}catch(e){}};
+const say=(t,bad)=>{$("msg").textContent=t;$("msg").className=bad?"err":"ok"};
+$("cat").innerHTML=["All Categories",...new Set(DEF.map(i=>i.c))].map(c=>`<option>${c}</option>`).join("");
+
+function menu(){
+  const q=$("search").value.trim().toLowerCase(),c=$("cat").selectedIndex?$("cat").value:null;
+  const list=st.menu.filter(i=>(!c||i.c===c)&&i.n.toLowerCase().includes(q));
+  $("grid").innerHTML=list.length?list.map(i=>{const k=st.menu.indexOf(i);
+    return `<div class="item ${i.s?"":"out"}"><b>${i.n}</b><small>${i.c} · ${i.s} in stock</small><span class="price">${peso(i.p)}</span><button class="pri" data-add="${k}" ${i.s?"":"disabled"}>${i.s?"Add to order":"Sold out"}</button></div>`}).join(""):'<p class="empty">No items match your search.</p>';
+}
+function totals(){
+  const sub=cart.reduce((a,l)=>a+st.menu[l.k].p*l.q,0),d=$("disc").selectedIndex;
+  const dis=d==1?sub*.2:(d==2&&sub>=500?sub*.1:0);
+  return{sub,dis,tot:Math.max(0,sub-dis)};
+}
+function render(){
+  $("cart").innerHTML=cart.length?cart.map((l,i)=>{const m=st.menu[l.k];
+    return `<div class="row"><div><b>${m.n}</b><br><small>${peso(m.p)} each</small></div><div class="q"><button data-m="${i}" aria-label="Less">−</button><span>${l.q}</span><button data-p="${i}" aria-label="More">+</button><button data-r="${i}" aria-label="Remove">✕</button></div></div>`}).join(""):'<p class="empty">No items yet. Pick something from the menu.</p>';
+  const t=totals();$("sub").textContent=peso(t.sub);$("dis").textContent="−"+peso(t.dis);$("tot").textContent=peso(t.tot);
+}
+function add(k){
+  const n=parseInt($("qty").value,10),m=st.menu[k];
+  if(!(n>0))return say("Quantity must be greater than zero.",1);
+  const l=cart.find(x=>x.k==k),have=l?l.q:0;
+  if(have+n>m.s)return say(`Only ${m.s} units of ${m.n} are available.`,1);
+  l?l.q+=n:cart.push({k,q:n});say(`Added ${n} × ${m.n}.`);render();
+}
+$("grid").onclick=e=>{const b=e.target.closest("[data-add]");if(b)add(+b.dataset.add)};
+$("cart").onclick=e=>{
+  const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+  if(d.p!==undefined){const l=cart[d.p];if(l.q+1>st.menu[l.k].s)return say("Not enough stock.",1);l.q++}
+  if(d.m!==undefined){const l=cart[d.m];l.q--;if(l.q<1)cart.splice(d.m,1)}
+  if(d.r!==undefined)cart.splice(d.r,1);
+  render();
+};
+["search","cat"].forEach(i=>$(i).oninput=menu);$("disc").onchange=render;
+$("bClear").onclick=()=>{cart=[];$("cust").value="";$("disc").selectedIndex=0;say("Order cleared.");render()};
+
+function receipt(no,cash,chg,t){
+  const w=36,ctr=s=>" ".repeat(Math.max(0,(w-s.length)>>1))+s,eq="=".repeat(w),dash="-".repeat(w);
+  const lines=cart.map(l=>{const m=st.menu[l.k];return `${m.n}\n  ${l.q} x ${peso(m.p)} = ${peso(m.p*l.q)}`}).join("\n");
+  return [eq,ctr("CORNER CAFE"),ctr("OFFICIAL RECEIPT"),eq,`Order No.: ${no}`,`Date: ${new Date().toLocaleString()}`,`Customer: ${$("cust").value.trim()||"Walk-in"}`,`Order Type: ${$("otype").value}`,dash,lines,dash,`Subtotal: ${peso(t.sub)}`,`Discount: ${peso(t.dis)}`,`TOTAL:    ${peso(t.tot)}`,`Cash:     ${peso(cash)}`,`Change:   ${peso(chg)}`,eq,ctr("THANK YOU FOR VISITING!"),eq].join("\n");
+}
+function show(txt,list){$("dtxt").textContent=txt||"";$("dlist").innerHTML=list||"";$("dlg").showModal()}
+$("dclose").onclick=()=>$("dlg").close();
+$("bPay").onclick=()=>{
+  if(!cart.length)return say("Add at least one item first.",1);
+  const t=totals(),raw=prompt(`Total is ${peso(t.tot)}. Enter cash received:`);
+  if(raw===null)return;const cash=parseFloat(raw);
+  if(!isFinite(cash)||cash<0)return say("Enter a valid payment amount.",1);
+  if(cash<t.tot)return say(`Insufficient payment. Required: ${peso(t.tot)}.`,1);
+  const no=st.orders+1,txt=receipt(no,cash,cash-t.tot,t);
+  cart.forEach(l=>st.menu[l.k].s-=l.q);
+  st.orders=no;st.sales+=t.tot;st.receipts.push({no,txt});save();
+  const chg=cash-t.tot;cart=[];$("cust").value="";$("disc").selectedIndex=0;
+  render();menu();say(`Payment complete. Change: ${peso(chg)}.`);show(txt);
+};
+$("bReport").onclick=()=>show(`CORNER CAFE - SALES REPORT\nGenerated: ${new Date().toLocaleString()}\n\nCompleted orders: ${st.orders}\nTotal sales: ${peso(st.sales)}\nCurrent order total: ${peso(totals().tot)}`);
+$("bReceipts").onclick=()=>{
+  if(!st.receipts.length)return show("No saved receipts yet.");
+  show("Saved receipts",st.receipts.map((r,i)=>`<button data-rc="${i}">Receipt ${r.no}</button>`).join(""));
+};
+$("dlist").onclick=e=>{const b=e.target.closest("[data-rc]");if(b){$("dtxt").textContent=st.receipts[b.dataset.rc].txt;$("dlist").innerHTML=""}};
+$("bReset").onclick=()=>{
+  if(!confirm("Reset stock, receipts and sales to the starting values?"))return;
+  st={menu:JSON.parse(JSON.stringify(DEF)),orders:0,sales:0,receipts:[]};cart=[];save();render();menu();say("Data reset.");
+};
+menu();render();
+</script>
+</body>
+</html>
